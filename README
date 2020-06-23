@@ -1,0 +1,23 @@
+V1.2 Moore's Cancer Center BTTSR Search App Build
+
+Add:
+  Cosmetic
+    -Rename tabs
+    -Rename columns
+    -Added help info for filters
+    -Remove row numbers
+    
+  Functional
+    -Introduce new dataset
+    -Alter table organization
+    -Add filters for year, past six months
+    -Build tissue subtype and filter
+    
+  Structural
+    -New tables build for tissue subtypes
+
+    
+    
+    
+
+
