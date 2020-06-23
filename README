@@ -1,0 +1,7 @@
+V1.1 Moore's Cancer Center BTTSR Search App Build
+
+Add:
+-Download button for Excel .csv file format for individual tables
+-Duplicate entries on Disease.History in Specimen General table
+-Remove Surgeon field from Patient Specimen Table
+
