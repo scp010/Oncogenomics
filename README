@@ -1,0 +1,23 @@
+v2.0
+
+Moore's Cancer Center BTTSR Search App for Specimen Identification
+
+4 tables
+-Patient General Data-StudyID and Demographic data
+-Specimen General-StudyID and counts by specimen type, primary surgeon responsible
+-Specimen Data-Specimen Parent ID, identify granular specimen IDs
+-Summary Data-Display counts of patients with specific disease history
+-Enable researcher to identify target demographic, find specific studyIDs matching criteria, then identify samples associated with studyIDs
+
+Methods:
+Aggregate data from multiple data dumps into condensed tables with meta-data
+Dump of 4 cleaned tables from PHI space into app-Clean and reorganize in app
+
+Goals:
+Allow researchers to access de-identified health records to search for samples facilitating cancer research
+Accessibility and ease of access for both search, input, and records requests
+
+Filters:
+Allow filtering across all tables, regardless of output information-Not done
+
+
