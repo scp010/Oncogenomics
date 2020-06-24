@@ -6,9 +6,11 @@ library(plyr)
 library(dplyr)
 library(tidyr)
 library(DT)
-#Data Load
-load("/home/oharismendy/BTTSR/clean_20200301_DI.rda")
-load("/home/oharismendy/BTTSR/dx_DI.rda")
+
+#Load de-identified tableau dump, clinical diagnosis table
+#studyID=de-identified MRN
+#dx_DI=de-identified diagnosis table
+#tmp=tableau dump
 ```
 
 Using Google Drive generated table--
@@ -22,7 +24,7 @@ icd10_oncotree=icd10_oncotree[!is.na(icd10_oncotree$level_1),]
 icd10_oncotree$ICD10_Code=as.character(icd10_oncotree$ICD10_Code)
 ```
 
-Using dx_DI table--
+Using diagnosis table--
 Find studyIDs with ICD10 code, count how many unique studyIDs were removed because of no ICD10 code
 
 ```{r}
@@ -34,7 +36,7 @@ studyID_noICD10_fromdx_DI=length(unique(dx_DI$studyID))-length(unique(studyID_IC
 #n unique studyIDs removed because of no ICD10 code assigned=990 (studyID_noICD10_fromdx_DI)
 ```
 
-Using dx_DI table--
+Using diagnosis table--
 Merge studyID table and OncoTree table based on ICD10 Codes assigned to each patient, count and remove how many unique studyIDs that have an ICD10 code and don't have an OncoTree match
 
 ```{r}
@@ -48,7 +50,7 @@ studyID_noOncotree_fromdx_DI=a1-a2
 #n unique studyIDs removed because of no oncotree match to studyID&ICD10 combo=936 (studyID_noOncotree_fromdx_DI)
 ```
 
-Using BTTSR dump--
+Using tableau dump--
 Take studyIDs with disease history, count and remove studyIDs that have a blank disease history
 
 ```{r}
