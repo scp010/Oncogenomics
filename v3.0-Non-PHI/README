@@ -2,6 +2,9 @@ v3.0
 
 Moore's Cancer Center BTTSR Search App for Specimen Identification
 
+Global file in this folder is not used, additional cleaning and organization has been moved to PHI space
+Data dump from PHI space is already organized and formatted to work with app, globabl file is used only to load data
+
 4 tables
 -Patient General Data-StudyID and Demographic data
 -Specimen General-StudyID and counts by specimen type, primary surgeon responsible
