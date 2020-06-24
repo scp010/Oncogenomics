@@ -1,0 +1,200 @@
+BTTSR Disease History-MSKCC OncoTree mapping script
+  Need to be able to assign patients with inaccurate or no disease history to OncoTree codes
+
+```{r}
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(DT)
+#Data Load
+load("/home/oharismendy/BTTSR/clean_20200301_DI.rda")
+load("/home/oharismendy/BTTSR/dx_DI.rda")
+```
+
+Using Google Drive generated table--
+Load ICD10-OncoTree mapping table from Google Drive and eliminate rows with no OncoTree code
+
+```{r}
+ICD_Oncotree_codes=read.csv('/home/scp010/ICD10-Oncotree_conversion/ICD_Oncotree_codes.csv')
+icd10_oncotree=select(ICD_Oncotree_codes,ICD10_Code,level_1,level_2)
+icd10_oncotree[icd10_oncotree==""]=NA
+icd10_oncotree=icd10_oncotree[!is.na(icd10_oncotree$level_1),]
+icd10_oncotree$ICD10_Code=as.character(icd10_oncotree$ICD10_Code)
+```
+
+Using dx_DI table--
+Find studyIDs with ICD10 code, count how many unique studyIDs were removed because of no ICD10 code
+
+```{r}
+#Select studyIDs with ICD10 code assigned, remove studyIDs with no ICD10 code from dx_DI (diagnostic table)
+studyID_ICD10=select(dx_DI,studyID,ICD10_Code)
+studyID_ICD10=studyID_ICD10[complete.cases(studyID_ICD10),]%>%
+  unique()
+studyID_noICD10_fromdx_DI=length(unique(dx_DI$studyID))-length(unique(studyID_ICD10$studyID))
+#n unique studyIDs removed because of no ICD10 code assigned=990 (studyID_noICD10_fromdx_DI)
+```
+
+Using dx_DI table--
+Merge studyID table and OncoTree table based on ICD10 Codes assigned to each patient, count and remove how many unique studyIDs that have an ICD10 code and don't have an OncoTree match
+
+```{r}
+#Merge studyID_ICD10 table and ICD10-oncotree table (merge_studyID_ICD10), remove studyIDs that have ICD10 code and no oncotree match
+merge_studyID_ICD10=left_join(studyID_ICD10,icd10_oncotree,by="ICD10_Code")%>%
+  unique()
+a1=length(unique(merge_studyID_ICD10$studyID))
+merge_studyID_ICD10=merge_studyID_ICD10[!is.na(merge_studyID_ICD10$level_1),]
+a2=length(unique(merge_studyID_ICD10$studyID))
+studyID_noOncotree_fromdx_DI=a1-a2
+#n unique studyIDs removed because of no oncotree match to studyID&ICD10 combo=936 (studyID_noOncotree_fromdx_DI)
+```
+
+Using BTTSR dump--
+Take studyIDs with disease history, count and remove studyIDs that have a blank disease history
+
+```{r}
+#Select studyIDs with Disease History field from clean/tmp BTTSR dump,remove blanks/NAs
+merge_studyID_diseasehistory=tmp%>%
+  drop_na(studyID)%>%
+  select(studyID,Disease.History)%>%
+  unique()
+merge_studyID_diseasehistory[merge_studyID_diseasehistory==""]=NA
+merge_studyID_diseasehistory=merge_studyID_diseasehistory[complete.cases(merge_studyID_diseasehistory),]
+n_unique_studyID_DiseaseHistory=length(unique(merge_studyID_diseasehistory$studyID))
+#n unique study IDs with Disease History field=4368 (n_unique_studyID_DiseaseHistory)
+```
+
+Using merged table--
+Creating merged table with studyID, disease history, OncoTree codes, count how many unique studyIDs have both a disease history and OncoTree code regardless of accuracy
+
+```{r}
+#Merge processed studyID-ICD10 table with disease history table
+ICD10_diseasehistory=left_join(merge_studyID_diseasehistory,merge_studyID_ICD10,by="studyID")
+n_unique_studyID_tmp_dxDI_oncotree=length(unique(ICD10_diseasehistory$studyID))
+ICD10_diseasehistory=ICD10_diseasehistory[!is.na(ICD10_diseasehistory$level_1),]
+n_completematch_studyID=length(unique(ICD10_diseasehistory$studyID))
+#n unique studyIDs after tmp-dxDI-oncotree merge=4368 (n_unique_studyID_tmp_DxDI_oncotree)
+#n unique studyIDs after tmp-dx-DI-oncotree merge filtering=2478 (n_completematch_studyID)
+```
+
+Using merged table--
+Remove rows with non informative disease histories and export a reference table to Google Drive to match ambiguous disease histories with level_1 OncoTree
+
+```{r}
+#Remove non-informative disease history rows
+drop_ICD10=ICD10_diseasehistory%>%
+  filter(Disease.History!="Clin Path Dx Match Bio Path Dx")%>%
+  filter(Disease.History!="Normal/Control")%>%
+  filter(!grepl("Diagnostic",Disease.History,ignore.case=TRUE))%>%
+  filter(!grepl("Non-neoplastic",Disease.History,ignore.case=TRUE,fixed=FALSE))
+reftable=as.data.frame(unique(drop_ICD10$Disease.History))
+```
+
+Using merged table--
+Append strings to disease history column based on matching pairs in reference table
+Ex. 
+  Clear matches: Breast Cancer History -> BREAST
+  Unclear matches: Abdominal Cancer History ->???
+
+```{r}
+#Rename Disease History, create matched table
+  #BILIARY_TRACT
+drop_ICD10$Disease.History=gsub("Bile Duct Cancer History","Bile Duct Cancer History (Biliary_Tract)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Gallbladder Cancer History","Gallbladder Cancer History (Biliary_Tract)",drop_ICD10$Disease.History,fixed=TRUE)
+
+  #BLADDER
+drop_ICD10$Disease.History=gsub("Urethral Cancer History","Urethral Cancer History (Bladder)",drop_ICD10$Disease.History,fixed=TRUE)
+
+  #BOWEL
+drop_ICD10$Disease.History=gsub("Anal Cancer History","Anal Cancer History (Bowel)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Appendix Cancer History","Appendix Cancer History (Bowel)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Colon Cancer History","Colon Cancer History (Bowel)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Colorectal Cancer History","Colorectal Cancer History (Bowel)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Rectal Cancer History","Rectal Cancer History (Bowel)",drop_ICD10$Disease.History,fixed=TRUE)
+
+  #CERVIX
+drop_ICD10$Disease.History=gsub("Cervical Cancer History","Cervical Cancer History (Cervix)",drop_ICD10$Disease.History,fixed=TRUE)
+
+  #HEAD_NECK
+drop_ICD10$Disease.History=gsub("Head and Neck Cancer History","Head and Neck Cancer History (Head_Neck)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Hypopharyngeal Cancer History","Hypopharyngeal Cancer History (Head_Neck)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Laryngeal Cancer History","Laryngeal Cancer History (Head_Neck)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Mouth - Use Oral Cancer History","Mouth - Use Oral Cancer History (Head_Neck)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Nasal Cavity Cancer History","Nasal Cavity Cancer History (Head_Neck)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Nasopharyngeal Cancer History","Nasopharyngeal Cancer History (Head_Neck)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Oral Cancer History","Oral Cancer History (Head_Neck)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Oropharyngeal Cancer History","Oropharyngeal Cancer History (Head_Neck)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Esophageal Cancer History","Esophageal Cancer History (Stomach)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Pharyngeal Cancer History","Pharyngeal Cancer History (Head_Neck)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Salivary Gland Cancer History","Salivary Gland Cancer History (Head_Neck)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Tongue Cancer History","Tongue Cancer History (Head_Neck)",drop_ICD10$Disease.History,fixed=TRUE)
+
+  #KIDNEY
+drop_ICD10$Disease.History=gsub("Renal Cancer History","Renal Cancer History (Kidney)",drop_ICD10$Disease.History,fixed=TRUE)
+
+  #OVARY
+drop_ICD10$Disease.History=gsub("Ovarian Cancer History","Ovarian Cancer History (Ovary)",drop_ICD10$Disease.History,fixed=TRUE)
+
+  #PANCREAS
+drop_ICD10$Disease.History=gsub("Pancreatic Cancer History","Pancreatic Cancer History (Pancreas)",drop_ICD10$Disease.History,fixed=TRUE)
+
+  #TESTIS
+drop_ICD10$Disease.History=gsub("Testicular Cancer History","Testicular Cancer History (Testis)",drop_ICD10$Disease.History,fixed=TRUE)
+
+  #VULVA
+drop_ICD10$Disease.History=gsub("Vaginal Cancer History","Vaginal Cancer History (Vulva)",drop_ICD10$Disease.History,fixed=TRUE)
+drop_ICD10$Disease.History=gsub("Vulvar Cancer History","Vulvar Cancer History (Vulva)",drop_ICD10$Disease.History,fixed=TRUE)
+```
+
+Using merged table--
+Flag disease history and OncoTree as true or false matches based on if OncoTree code appears in disease history string
+
+```{r}
+drop_ICD10=drop_ICD10%>%
+  group_by(studyID)%>%
+  mutate(n.unique.DiseaseHistory=n_distinct(Disease.History))%>%
+  rowwise()%>%
+  mutate(matches_level_1=grepl(level_1,Disease.History,ignore.case=TRUE,fixed=FALSE))
+```
+
+Using matched table--
+Create actual match table by selecting rows where matches column is TRUE, count number of unique studyIDs 
+
+```{r}
+#Check Disease History match to Oncotree
+trueMatch=drop_ICD10[drop_ICD10$matches_level_1==TRUE,]
+studyID_diseasehistory_Oncotree_match=length(unique(trueMatch$studyID))
+#n unique studyIDs that are matches=1870 (studyID_diseasehistory_Oncotree_match)
+```
+
+Using matched table--
+Count numbers of unique OncoTree codes and disease histories, organized by studyID, create fractional ratio of OncoTree to disease histories for each studyID 
+
+```{r}
+#Select unique Disease History-Oncotree pairings, tally
+matchTable=select(trueMatch,studyID,Disease.History,level_1,n.unique.DiseaseHistory)%>%
+  unique()%>%
+  group_by(studyID)%>%
+  mutate(n.unique.Oncotree=length(level_1))
+
+#Find fractional ratios
+unique_matches=matchTable
+unique_matches$n.unique.DiseaseHistory=as.character(unique_matches$n.unique.DiseaseHistory)
+unique_matches$n.unique.Oncotree=as.character(unique_matches$n.unique.Oncotree)
+unique_matches=unique_matches%>%
+  mutate(Fraction=paste(n.unique.Oncotree,n.unique.DiseaseHistory,sep="/"))
+
+#Analyze number of studyIDs by fractional match
+fractionBreakdown=select(unique_matches,Fraction,studyID)%>%
+  unique()%>%
+  group_by(Fraction)%>%
+  tally()
+
+```
+
+
+
+
+
+
+
+
