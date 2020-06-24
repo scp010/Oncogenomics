@@ -1,6 +1,7 @@
 v1.0
 
 Moore's Cancer Center BTTSR Search App for Specimen Identification
+  -Enable researchers to quickly and accurately query UCSD Biorepository to identify useful biological specimens for cancer genomic research. Aggregate Tableau dump, Foundation Medicine, and clinical patient demographics and diagnosis data to provide granular view of specimens as well as large scale view of available samples with regards to diagnosis, demographics, and other relevant meta-data
 
 4 tables
 -Patient General Data-StudyID and Demographic data
