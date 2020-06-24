@@ -7,10 +7,11 @@ library(reshape2)
 library(ggplot2)
 library(DT)
 
-load("/home/oharismendy/BTTSR/clean_20190620_DI_v2.rda")
-load("/home/oharismendy/BTTSR/BTTSR_FM_v1.rda")
-load("/home/oharismendy/BTTSR/demo_DI.rda")
-load("/home/oharismendy/BTTSR/dx_DI.rda")
+#Load Tableau dump (Clean)
+#Load Foundation Medicine (FM)
+#Load demographics (demo_DI)
+#Load diagnosis (dx_DI)
+#.rda files from PHI space
 
 #Clean Clean table
 clean_20190620_DI_v2=clean_20190620_DI_v2[-c(3,9:12)]%>%
